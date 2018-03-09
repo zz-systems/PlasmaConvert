@@ -24,6 +24,11 @@ set(convert.cmd ${CMAKE_CURRENT_LIST_DIR}/convert.py CACHE FILEPATH "Legacy conv
 set(convertnew.cmd ${CMAKE_CURRENT_LIST_DIR}/convertnew.py CACHE FILEPATH "New converter location")
 set(memory.template ${CMAKE_CURRENT_LIST_DIR}/ram_xilinx.vhd CACHE FILEPATH "Memory template file")
 
+add_library(linker_cfg2 INTERFACE)
+target_link_libraries(
+        linker_cfg2
+        INTERFACE
+        "-Wl,-T,${CMAKE_CURRENT_LIST_DIR}/linkerscript.txt,-Map,testnew.map,-s,-N")
 
 function(postprocess_binary target)
     convert_to_vhd_internal(${target} ${convert.cmd})
