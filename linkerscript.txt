@@ -1,39 +1,59 @@
 __stack_size = 0x80 * 4;
 
+ENTRY(_reset_vector)
+
+
 MEMORY
-	{
-	intram (rwx) : ORIGIN = 0, LENGTH = 4K
-	}
+{
+	intram (rwx) : ORIGIN = 0, LENGTH = 8K
+}
 
 SECTIONS
 {
 	. = 0x00;
 	VECTORTABLE : 
-		{ 
+	{ 
 		*(.vector.reset);
 		. = 0x10;
 		*(.vector.interrupt);
 		. = 0x20;
-		}
+	}
 
 	. = ALIGN(4);
 	.text : 
-		{ 
+	{ 
 		*(.text) 
 		*(.text*) 
-		}
+	}
 
 	/*Hier liegen data und sdata zum Kopieren*/
 	
-	INITDATA : {
+	/*INITDATA : {
 		__rom_data_start = .;
 		. += __data_size;
 		__rom_sdata_start = .;	
 		. += __sdata_size;
-	}
+	}*/
 
 	. = ALIGN(4);
-	.data : AT( __rom_data_start ) { 
+	.rodata :
+	{
+		*(.rodata)
+		*(.rodata*)
+	}
+
+	
+	.initdata :
+	{
+		__rom_data_start = ALIGN(ALIGNOF(.data));
+		. += __data_size;
+		__rom_sdata_start = ALIGN(ALIGNOF(.sdata));	
+		. += __sdata_size;
+	}
+
+	
+	.data : AT( __rom_data_start)
+	{ 
 		__data_start = .;
 		*(.data) 
 		*(.data*)
@@ -41,24 +61,23 @@ SECTIONS
 	}
 	__data_size = __data_end - __data_start;
 	
-	. = ALIGN(4);
-	.sdata : AT( __rom_sdata_start ) { 
+	.sdata : AT( __rom_sdata_start) 
+	{ 
 		__sdata_start = .;	
 		*(.sdata) 
 		*(.sdata*)
 		__sdata_end = .;
-	}
+	}	
 	__sdata_size = __sdata_end - __sdata_start;
-	
-	. = ALIGN(4);
+
 	__gp = .;	
-	.sbss : { 
+
+	.sbss : 
+	{ 
 		__sbss_start = .;
 		*(.sbss) 
-		*(.sbss.*)
 		*(scommon)
 		*(.scommon)
-		*(.scommon*)
 		__sbss_end = .;
 	}
 	__sbss_size = __sbss_end - __sbss_start;
@@ -92,9 +111,5 @@ SECTIONS
 		*(.mdebug*)
 		*(.comment)
 		*(.gnu)
-
-
 	}
 }
-ENTRY(_reset_vector)
-

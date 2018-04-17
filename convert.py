@@ -127,6 +127,12 @@ def doConvert(filename, vhdl_src, vhdl_dest):
                 start = sect["sh_addr"]
                 end = start + sect["sh_size"]
                 phys_end = start + sect["sh_size"]
+
+                print("\talign: " + str(sect["sh_addralign"]))
+                print("\tstart: " + str(start))
+                print("\tend: " + str(end))
+                print("\tphys_end: " + str(phys_end))
+
                 if(phys_end >= len(code)):
                     raise ValueError("PROGBITS-Segement to big!")
                 code[start:end] = sect.data()
@@ -148,5 +154,5 @@ def doConvert(filename, vhdl_src, vhdl_dest):
 if __name__ == '__main__':
     src, vhdl_src, vhdl_dest = sys.argv[1:4]
 
-    printElfFile(src)
+    #printElfFile(src)
     doConvert(src, vhdl_src, vhdl_dest)
