@@ -70,7 +70,7 @@ def printElfFile(filename):
 def list_copy(dest, dest_idx, src, src_idx, num):
     dest[dest_idx:dest_idx+num] = src[src_idx:src_idx+num] 
 
-def ram_image(file_src, file_dest, memory):
+def ram_image_vhdl(file_src, file_dest, memory):
     # Modify vhdl source code
     # This part is hardcoded for the specific format of the Plasma Memory VHDL-File
     # The Format consists of 4 Blocks * 64 INIT-Statements * 32 Bytes (= 8 KiB)
@@ -109,6 +109,38 @@ def ram_image(file_src, file_dest, memory):
     with open(file_dest, 'w') as f:
         f.write("".join(vhdl_lst))
 
+def ram_image_mif(file_dest, memory):
+    BLOCKS = 4
+    WIDTH = 8
+    DEPTH = 2048
+
+    ADDRESS_RADIX = 'HEX'
+    DATA_RADIX = 'HEX'
+
+    blocks = [[], [], [], []]
+    for i,e in enumerate(memory):
+        text = format(e, "08X")
+        blocks[0].append(text[0:2])
+        blocks[1].append(text[2:4])
+        blocks[2].append(text[4:6])
+        blocks[3].append(text[6:8])
+
+    for block in range(0, BLOCKS):
+        with open(file_dest + "_block_{}.mif".format(block), 'w') as f:
+            f.write("-- MEMORY INIT FILE BLOCK {}\n".format(block))
+            f.write("WIDTH = {};\n".format(WIDTH))
+            f.write("DEPTH = {};\n".format(DEPTH))
+            f.write("ADDRESS_RADIX = {};\n".format(ADDRESS_RADIX))
+            f.write("DATA_RADIX = {};\n".format(DATA_RADIX))
+            f.write("CONTENT\n")
+            f.write("BEGIN\n")
+
+            for adr in range(0, DEPTH):
+                val = blocks[block][adr] if len(blocks[block]) > adr else 0;
+                f.write("{0:08X} : {1:};\n".format(adr, val))
+
+            f.write("END\n")
+
 def doConvert(filename, vhdl_src, vhdl_dest):
     code = bytearray(MAX_SIZE) # TODO: dynamic sizing
     length = 0
@@ -145,10 +177,10 @@ def doConvert(filename, vhdl_src, vhdl_dest):
 
     with open(filename + ".txt", 'w') as f:
         for e in memory:
-            f.write(format(e, "08X") + "\n")            
+            f.write(format(e, "08X") + "\n")
 
-    ram_image(vhdl_src, vhdl_dest, memory)
-
+    #ram_image_vhdl(vhdl_src, vhdl_dest, memory)
+    ram_image_mif(vhdl_dest, memory)
 
             
 if __name__ == '__main__':
