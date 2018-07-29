@@ -1,0 +1,120 @@
+OUTPUT_ARCH(mips)
+ENTRY(_reset_vector)
+
+MEMORY
+{
+	ram (rwx) : ORIGIN = 0, LENGTH = 8K
+}
+
+__stack_size = 0x80 * 4;
+/* __stack_start = ORIGIN(ram)+LENGTH(ram); */
+/* __stack_end = __stack_start - __stack_size; */
+
+__heap_size = 0x40 * 4;
+
+SECTIONS
+{
+  . = 0x00;
+
+  /* vector table */
+  .interp : {
+    *(.vector.reset);
+		. = 0x10;
+		*(.vector.interrupt);
+		. = 0x20;
+  } > ram
+
+	.text : {
+		*(.text .text*)
+		*(.rodata .rodata*)
+	} > ram
+
+  .initdata :
+	{
+		__rom_data_start = ALIGN(ALIGNOF(.data));
+		. += __data_size;
+		__rom_sdata_start = ALIGN(ALIGNOF(.sdata));	
+		. += __sdata_size;
+	}
+
+  . = ALIGN(4);
+  .data : AT(__rom_data_start)
+  {
+    __data_start = .;
+    *(.data .data.*)
+    __data_end = .;
+  } > ram
+
+  __data_size = __data_end - __data_start;
+
+  . = .;
+  __gp = ALIGN(16);
+
+  .sdata : AT(__rom_sdata_start) 
+  {
+    __sdata_start = .;
+    *(.sdata .sdata.*)
+		__sdata_end = .;
+  } > ram
+
+	__sdata_size = __sdata_end - __sdata_start;
+
+  . = ALIGN(4);
+  .sbss (NOLOAD) :
+  {
+    __sbss_start = .;
+    *(.dynsbss)
+    *(.sbss .sbss.*)
+    *(.scommon)
+
+    . = ALIGN(4);
+		__sbss_end = .;
+  } > ram
+
+  . = ALIGN(4);
+  .bss (NOLOAD) :
+  {
+    __bss_start = .;
+    *(.dynbss)
+    *(.bss .bss.*)
+    *(COMMON)
+
+    . = ALIGN(4);    
+		__bss_end = .;
+
+   /* Align here to ensure that the .bss section occupies space up to
+      __end.  Align after .bss to ensure correct alignment even if the
+      .bss section disappears because there are no input sections.
+      FIXME: Why do we need it? When there is no .bss section, we don't
+      pad the .data section.  */
+   . = ALIGN(. != 0 ? 32 / 8 : 1);
+  } > ram
+
+	__end = .;
+
+  .heap :
+  {
+      __heap_start = .;
+      . = . + __heap_size;
+      __heap_start = .;
+
+  } > ram
+
+	.stack : { 
+		__stack_start = .;
+		. += __stack_size;
+		__stack_end = .;
+	} > ram
+
+	/* Sections to be discarded */
+	/DISCARD/ : {
+		*(.reginfo)
+		*(.MIPS*)
+		*(.options)
+		*(.pdr)
+		*(.mdebug*)
+		*(.comment)
+		*(.note)
+		*(.gnu)
+	}
+}

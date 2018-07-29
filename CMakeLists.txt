@@ -14,9 +14,19 @@ function(convert_to_vhd_internal target converter)
     add_custom_command(
         TARGET ${target}
         POST_BUILD
-        COMMAND python3 ${converter} $<TARGET_FILE:${target}> ${memory.template} ${target}_ram_image.vhd ${target}_ram_image.bin
+        COMMAND python3 ${converter} $<TARGET_FILE:${target}> ${target}_ram_image vhd ${memory.template}
         DEPENDS ${converter}
         COMMENT "Converting binary to VHD memory image using ${converter}"
+    )
+endfunction()
+
+function(convert_to_mif_internal target converter)
+    add_custom_command(
+        TARGET ${target}
+        POST_BUILD
+        COMMAND python3 ${converter} $<TARGET_FILE:${target}> ${target}_ram_image mif
+        DEPENDS ${converter}
+        COMMENT "Converting binary to MIF memory image using ${converter}"
     )
 endfunction()
 
@@ -27,8 +37,8 @@ add_library(linker_cfg INTERFACE)
 target_link_libraries(
         linker_cfg
         INTERFACE
-        "-Wl,-T,${CMAKE_CURRENT_LIST_DIR}/linkerscript.txt,-Map,testnew.map,-s,-N")
+        "-Wl,-T,${CMAKE_CURRENT_LIST_DIR}/plasma.ldscript,-Map,testnew.map,-s,-N")
 
 function(postprocess_binary target)
-    convert_to_vhd_internal(${target} ${convert.cmd})
+    convert_to_mif_internal(${target} ${convert.cmd})
 endfunction()

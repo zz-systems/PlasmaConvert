@@ -1,8 +1,11 @@
 import sys
 import struct
+import subprocess
+
 from elftools.elf.elffile import ELFFile
 from elftools.construct.lib.container import Container
 from elftools.elf.enums import *
+
 MAX_SIZE = (1024*1024*4)
 
 from elftools.construct import (
@@ -70,7 +73,7 @@ def printElfFile(filename):
 def list_copy(dest, dest_idx, src, src_idx, num):
     dest[dest_idx:dest_idx+num] = src[src_idx:src_idx+num] 
 
-def ram_image_vhdl(file_src, file_dest, memory):
+def write_ram_image_vhd(memory, file_src, file_dest):
     # Modify vhdl source code
     # This part is hardcoded for the specific format of the Plasma Memory VHDL-File
     # The Format consists of 4 Blocks * 64 INIT-Statements * 32 Bytes (= 8 KiB)
@@ -109,7 +112,7 @@ def ram_image_vhdl(file_src, file_dest, memory):
     with open(file_dest, 'w') as f:
         f.write("".join(vhdl_lst))
 
-def ram_image_mif(file_dest, memory):
+def write_ram_image_mif(memory, file_dest):
     BLOCKS = 4
     WIDTH = 8
     DEPTH = 2048
@@ -119,11 +122,10 @@ def ram_image_mif(file_dest, memory):
 
     blocks = [[], [], [], []]
     for i,e in enumerate(memory):
-        text = format(e, "08X")
-        blocks[0].append(text[0:2])
-        blocks[1].append(text[2:4])
-        blocks[2].append(text[4:6])
-        blocks[3].append(text[6:8])
+        blocks[0].append(e >> 24 & 0xFF)
+        blocks[1].append(e >> 16 & 0xFF)
+        blocks[2].append(e >> 8 & 0xFF)
+        blocks[3].append(e & 0xFF)
 
     for block in range(0, BLOCKS):
         with open(file_dest + "_block_{}.mif".format(block), 'w') as f:
@@ -136,12 +138,49 @@ def ram_image_mif(file_dest, memory):
             f.write("BEGIN\n")
 
             for adr in range(0, DEPTH):
-                val = blocks[block][adr] if len(blocks[block]) > adr else 0;
-                f.write("{0:08X} : {1:};\n".format(adr, val))
+                val = blocks[block][adr] if len(blocks[block]) > adr else 0
+                f.write("{0:08X} : {1:02X};\n".format(adr, val))
 
             f.write("END\n")
 
-def doConvert(filename, vhdl_src, vhdl_dest):
+def write_ram_image_intel_hex(memory, file_dest):
+    BLOCKS = 4
+    WIDTH = 8
+    DEPTH = 2048
+
+    write_ram_image_mif(memory, file_dest)
+
+    for block in range(0, BLOCKS):
+        mif_file = file_dest + "_block_{}.mif"
+        hex_file = file_dest + "_block_{}.hex"
+        subprocess.call("mif2hex", mif_file, hex_file)
+
+    # blocks = [[], [], [], []]
+    # for i, e in enumerate(memory):
+    #     blocks[0].append(e >> 24 & 0xFF)
+    #     blocks[1].append(e >> 16 & 0xFF)
+    #     blocks[2].append(e >> 8 & 0xFF)
+    #     blocks[3].append(e & 0xFF)
+    #
+    # for block in range(0, BLOCKS):
+    #     with open(file_dest + "_block_{}.hex".format(block), 'w') as f:
+    #
+    #         for adr in range(0, DEPTH):
+    #             val = blocks[block][adr] if len(blocks[block]) > adr else 0
+    #             chksum = (~(1 + adr + val) + 1) % (1 << 8)
+    #
+    #             f.write(":01{0:04X}00{1:02X}{2:02X}\n".format(adr, val, chksum))
+    #
+    #         f.write(":00000001FF")
+
+def write_ram_image_pcode(memory, file_dest):
+
+    with open(file_dest + ".txt", 'w') as f:
+        for e in memory:
+            f.write(format(e, "08X") + "\n")
+
+
+def convert(filename):
     code = bytearray(MAX_SIZE) # TODO: dynamic sizing
     length = 0
 
@@ -175,16 +214,22 @@ def doConvert(filename, vhdl_src, vhdl_dest):
     for i in range(0,length,4):  
         memory.append(struct.unpack(">L", code[i:i+4])[0])
 
-    with open(filename + ".txt", 'w') as f:
-        for e in memory:
-            f.write(format(e, "08X") + "\n")
-
-    #ram_image_vhdl(vhdl_src, vhdl_dest, memory)
-    ram_image_mif(vhdl_dest, memory)
+    return memory
 
             
 if __name__ == '__main__':
-    src, vhdl_src, vhdl_dest = sys.argv[1:4]
 
-    #printElfFile(src)
-    doConvert(src, vhdl_src, vhdl_dest)
+    print(sys.argv)
+    src, dest, kind = sys.argv[1:4]
+
+    memory = convert(src)
+
+    if kind.lower() == "vhd":
+        template = sys.argv[4]
+        write_ram_image_vhd(memory, template, dest)
+    elif kind.lower() == "mif":
+        write_ram_image_mif(memory, dest)
+    elif kind.lower() == "hex":
+        write_ram_image_intel_hex(memory, dest)
+    elif kind.lower() == "pcode":
+        write_ram_image_pcode(memory, dest)
