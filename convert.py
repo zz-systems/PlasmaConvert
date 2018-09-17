@@ -6,7 +6,7 @@ from elftools.elf.elffile import ELFFile
 from elftools.construct.lib.container import Container
 from elftools.elf.enums import *
 
-MAX_SIZE = (1024*1024*4)
+MAX_SIZE = (1024*1024*64)
 
 from elftools.construct import (
     UBInt32, Array, Struct
@@ -193,7 +193,7 @@ def convert(filename):
             raise ValueError("ELF needs to be big endian!")
 
         for sect in ELFFile(f).iter_sections():
-            if(sect["sh_type"] == "SHT_PROGBITS" or sect["sh_type"] == "SHT_NOBITS"):
+            if(sect["sh_type"] == "SHT_PROGBITS"):# or sect["sh_type"] == "SHT_NOBITS"):
                 print(sect.name)
                 start = sect["sh_addr"]
                 end = start + sect["sh_size"]
@@ -204,8 +204,9 @@ def convert(filename):
                 print("\tend: " + str(end))
                 print("\tphys_end: " + str(phys_end))
 
-                if(phys_end >= len(code)):
-                    raise ValueError("PROGBITS-Segement to big!")
+                #if(phys_end >= len(code)):
+                #    raise ValueError("PROGBITS-Segement to big: physical end at {}, code length: {}".format(phys_end, len(code)))
+
                 code[start:end] = sect.data()
                 length = max(length, end)
 

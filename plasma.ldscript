@@ -3,14 +3,15 @@ ENTRY(_reset_vector)
 
 MEMORY
 {
-	ram (rwx) : ORIGIN = 0, LENGTH = 8K
+	ram0 (rwx) : ORIGIN = 0, LENGTH = 8K
+  ram1 (rwx) : ORIGIN = 0x10000000, LENGTH = 64M
 }
 
-__stack_size = 0x80 * 4;
+__stack_size = 0x200; /*0x1400000; *//* 20MB */
 /* __stack_start = ORIGIN(ram)+LENGTH(ram); */
 /* __stack_end = __stack_start - __stack_size; */
 
-__heap_size = 0x40 * 4;
+__heap_size = 0x200; /*0x1400000;*/ /* 20MB */ 
 
 SECTIONS
 {
@@ -22,12 +23,12 @@ SECTIONS
 		. = 0x10;
 		*(.vector.interrupt);
 		. = 0x20;
-  } > ram
+  } > ram0
 
 	.text : {
 		*(.text .text*)
 		*(.rodata .rodata*)
-	} > ram
+	} > ram0
 
   .initdata :
 	{
@@ -35,7 +36,7 @@ SECTIONS
 		. += __data_size;
 		__rom_sdata_start = ALIGN(ALIGNOF(.sdata));	
 		. += __sdata_size;
-	}
+	} > ram0
 
   . = ALIGN(4);
   .data : AT(__rom_data_start)
@@ -43,7 +44,7 @@ SECTIONS
     __data_start = .;
     *(.data .data.*)
     __data_end = .;
-  } > ram
+  } > ram0
 
   __data_size = __data_end - __data_start;
 
@@ -55,7 +56,7 @@ SECTIONS
     __sdata_start = .;
     *(.sdata .sdata.*)
 		__sdata_end = .;
-  } > ram
+  } > ram0
 
 	__sdata_size = __sdata_end - __sdata_start;
 
@@ -69,7 +70,7 @@ SECTIONS
 
     . = ALIGN(4);
 		__sbss_end = .;
-  } > ram
+  } > ram0
 
   . = ALIGN(4);
   .bss (NOLOAD) :
@@ -88,7 +89,7 @@ SECTIONS
       FIXME: Why do we need it? When there is no .bss section, we don't
       pad the .data section.  */
    . = ALIGN(. != 0 ? 32 / 8 : 1);
-  } > ram
+  } > ram0
 
 	__end = .;
 
@@ -96,15 +97,15 @@ SECTIONS
   {
       __heap_start = .;
       . = . + __heap_size;
-      __heap_start = .;
+      __heap_end = .;
 
-  } > ram
+  } > ram1
 
 	.stack : { 
 		__stack_start = .;
 		. += __stack_size;
 		__stack_end = .;
-	} > ram
+	} > ram1
 
 	/* Sections to be discarded */
 	/DISCARD/ : {
